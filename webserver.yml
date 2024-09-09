@@ -1,0 +1,56 @@
+- name: Deploy web server on VM1 and VM2
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Install Nginx web server
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+
+    - name: Configure Nginx to listen on port 8080
+      ansible.builtin.template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/sites-available/default
+      notify: restart nginx
+
+    - name: Start and enable Nginx web server
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Deploy a simple HTML page for Nginx
+      ansible.builtin.copy:
+        content: |
+          {% if inventory_hostname == 'VM1' %}
+          <h1>-Hello World from SJSU-1</h1>
+          {% else %}
+          <h1>Hello World from SJSU-2</h1>
+          {% endif %}      
+        dest: /var/www/html/index.html
+
+  handlers:
+    - name: restart nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+
+- name: Un-deploy web server on VM1 and VM2
+  hosts: webservers
+  become: yes
+  tasks:
+
+    - name: Stop and remove Nginx web server
+      ansible.builtin.service:
+        name: nginx
+        state: stopped
+
+    - name: Remove Nginx package
+      ansible.builtin.apt:
+        name: nginx
+        state: absent
+
+    - name: Remove web page
+      ansible.builtin.file:
+        path: /var/www/html/index.html
+        state: absent
